@@ -22,7 +22,7 @@
 
 ### 🔥 News
 * **[2026.10.19]** We release the paper of Wan-Alpha++ on [arXiv](https://arxiv.org/abs/2610.26189).
-* **[2026.10.19]** Released checkpoints for normal RGBA video of Wan-Alpha++ on [GitHub](https://github.com/WeChatCV/Wan-Alpha++).
+* **[2026.10.19]** Released checkpoints for normal RGBA video of Wan-Alpha++ on [GitHub](https://github.com/WeChatCV/Wan-Alpha_PlusPlus).
 
 
 ---
@@ -43,7 +43,7 @@
 ##### 1. Environment Setup
 ```bash
 # Clone the project repository
-git clone https://github.com/WeChatCV/Wan-Alpha++.git
+git clone https://github.com/WeChatCV/Wan-Alpha_PlusPlus.git
 cd Wan-Alpha++
 
 # Create and activate Conda environment
@@ -116,4 +116,4 @@ If you find our work helpful for your research, please consider citing our paper
 
 ### 📬 Contact Us
 
-If you have any questions or suggestions, feel free to reach out via [GitHub Issues](https://github.com/WeChatCV/Wan-Alpha++/issues) . We look forward to your feedback!
+If you have any questions or suggestions, feel free to reach out via [GitHub Issues](https://github.com/WeChatCV/Wan-Alpha_PlusPlus/issues) . We look forward to your feedback!
