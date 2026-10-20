@@ -44,7 +44,7 @@
 ```bash
 # Clone the project repository
 git clone https://github.com/WeChatCV/Wan-Alpha_PlusPlus.git
-cd Wan-Alpha++
+cd Wan-Alpha_PlusPlus
 
 # Create and activate Conda environment
 conda create -n Wan-Alpha++ python=3.11 -y
