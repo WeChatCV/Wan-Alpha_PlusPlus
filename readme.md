@@ -32,8 +32,8 @@
 - [x] **Paper**: Available on [arXiv](https://arxiv.org/abs/2610.26189).
 - [x] **Inference Code**: Released inference pipeline for normal RGBA video of Wan-Alpha++.
 - [x] **Model Weights of Normal RGBA Video**: Released checkpoints for Wan-Alpha++.
-- [] Training Code.
-- [] Checkpoints for Effect RGBA Video.
+- [ ] Training Code.
+- [ ] Checkpoints for Effect RGBA Video.
 
 
 
