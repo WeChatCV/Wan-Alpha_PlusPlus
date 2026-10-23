@@ -15,7 +15,7 @@ import torch
 import torch.distributed as dist
 from PIL import Image, ImageDraw
 
-sys.path.append("/mnt/shenzhen2cephfs/mm-base-vision/haotiandong/WanAlpha-Tpami/Wan2.2")
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Wan2.2"))
 import wan2
 from wan2.configs import MAX_AREA_CONFIGS, SIZE_CONFIGS, SUPPORTED_SIZES, WAN_CONFIGS
 from wan2.distributed.util import init_distributed_group
@@ -764,15 +764,8 @@ def generate(args):
             convert_model_dtype=args.convert_model_dtype,
         )
         logging.info("Generating video ...")
-        img_list = [
-       "img_021.png",
-        ]
-
-        prompt_list = [
-        "这个视频的背景是透明的。一个女人手里拿着一个透明杯子，里边装着橙汁，她把杯子拿起来喝了一口，脸上露出笑容。"
-
-
-] 
+        img_list = [args.image]
+        prompt_list = [args.prompt]
         for img, prompt in zip(img_list, prompt_list):
             args.prompt = prompt
             logging.info(f"Input prompt: {prompt}")
