@@ -860,7 +860,7 @@ class WanVAEit2v:
             self.rgb_only = False
 
             if has_trans_encoder:
-                self.model_fgr.middle = Mapping(192*4, 16, mid_dim=192*2).to(device=device)
+                self.model_fgr.middle = Mapping(192*4, 16, mid_dim=192*2).to(device=device).requires_grad_(False)
 
                 middle_state_dict = {}
                 for key in state_dict:
