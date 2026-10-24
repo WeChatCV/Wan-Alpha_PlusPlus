@@ -68,40 +68,6 @@ def rope_apply(x, grid_sizes, freqs):
         output.append(x_i)
     return torch.stack(output).float()
 
-@torch.amp.autocast('cuda', enabled=False)
-def rope_apply_loop(x, grid_sizes, freqs, time_shift=0):
-    n, c = x.size(2), x.size(3) // 2
-
-    # split freqs
-    freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-
-    # loop over samples
-    output = []
-    for i, (f, h, w) in enumerate(grid_sizes.tolist()):
-        seq_len = f * h * w
-
-        # precompute multipliers
-        x_i = torch.view_as_complex(x[i, :seq_len].to(torch.float64).reshape(
-            seq_len, n, -1, 2))
-        freqs_i = torch.cat([
-            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
-            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
-            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
-        ],
-                            dim=-1).reshape(seq_len, 1, -1)
-
-        freqs_3d = freqs_i.view(f, h, w, 1, -1)
-        if time_shift != 0:
-            freqs_3d = torch.roll(freqs_3d, shifts=time_shift, dims=0)
-        freqs_i = freqs_3d.reshape(seq_len, 1, -1)
-
-        # apply rotary embedding
-        x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
-        x_i = torch.cat([x_i, x[i, seq_len:]])
-
-        # append to collection
-        output.append(x_i)
-    return torch.stack(output).float()
 
 
 class WanRMSNorm(nn.Module):
@@ -263,6 +229,7 @@ class WanAttentionBlock(nn.Module):
         freqs,
         context,
         context_lens,
+        block_idx=None
     ):
         r"""
         Args:
@@ -454,6 +421,7 @@ class WanModel_lightx2v(ModelMixin, ConfigMixin):
         def get_name_dict(lora_state_dict):
             lora_name_dict = {}
             for key in lora_state_dict:
+                # print(key)
                 if ".lora_B." not in key:
                     continue
                 keys = key.split(".")
@@ -466,10 +434,16 @@ class WanModel_lightx2v(ModelMixin, ConfigMixin):
                 lora_name_dict[target_name] = (key, key.replace(".lora_B.", ".lora_A."))
             return lora_name_dict
         
+        # state_dict_lora = torch.load(lora_path, map_location='cpu')
+
         state_dict_lora = {}
+        metadata = {}
         with safe_open(lora_path, framework="pt") as f:
+            metadata = f.metadata()
             for k in f.keys():
                 state_dict_lora[k] = f.get_tensor(k)
+        # for k in state_dict_lora.keys
+        # print(state_dict_lora)
         lora_name_dict = get_name_dict(state_dict_lora)
 
         state_dict_model = self.state_dict()
@@ -568,8 +542,6 @@ class WanModel_lightx2v(ModelMixin, ConfigMixin):
             context=context,
             context_lens=context_lens)
 
-        # gradient checkpointing：仅在 frame-guidance 反传过 DiT（grad 开启且输入需要梯度）时
-        # 启用，逐 block 重算激活以省显存；普通 no_grad 采样时走原始分支，零额外开销。
         use_ckpt = (getattr(self, 'grad_checkpointing', False)
                     and torch.is_grad_enabled()
                     and isinstance(x, torch.Tensor) and x.requires_grad)

@@ -105,13 +105,7 @@ class WanI2V:
 
         self.vae_stride = config.vae_stride
         self.patch_size = config.patch_size
-        # self.vae = Wan2_1_VAE(
-        #     vae_pth=os.path.join(checkpoint_dir, config.vae_checkpoint),
-        #     device=self.device)
-        # self.vae = Wan2_1_VAE(
-        #     vae_pth=os.path.join(checkpoint_dir, config.vae_checkpoint),
-        #     vae_lora_path=vae_lora_checkpoint, has_trans_encoder=has_trans_encoder,
-        #     device=self.device)
+
         self.vae = WanVAEit2v(
             vae_pth=os.path.join(checkpoint_dir, config.vae_checkpoint),
             vae_lora_path=vae_lora_checkpoint, has_trans_encoder=has_trans_encoder,
@@ -346,16 +340,6 @@ class WanI2V:
             context = [t.to(self.device) for t in context]
             context_null = [t.to(self.device) for t in context_null]
 
-        # y = self.vae.encode([
-        #     torch.concat([
-        #         torch.nn.functional.interpolate(
-        #             img[None].cpu(), size=(h, w), mode='bicubic').transpose(
-        #                 0, 1),
-        #         torch.zeros(3, F - 1, h, w)
-        #     ],
-        #                  dim=1).to(self.device)
-        # ])[0]
-        # y = torch.concat([msk, y])
         y = self.vae.encode([
             torch.concat([
                 torch.nn.functional.interpolate(
@@ -443,18 +427,18 @@ class WanI2V:
                 sample_guide_scale = guide_scale[1] if t.item(
                 ) >= boundary else guide_scale[0]
 
-                # noise_pred_cond = model(
-                #     latent_model_input, t=timestep, **arg_c)[0]
-                # if offload_model:
-                #     torch.cuda.empty_cache()
-                # noise_pred_uncond = model(
-                #     latent_model_input, t=timestep, **arg_null)[0]
-                # if offload_model:
-                #     torch.cuda.empty_cache()
-                # noise_pred = noise_pred_uncond + sample_guide_scale * (
-                #     noise_pred_cond - noise_pred_uncond)
                 noise_pred_cond = model(
                     latent_model_input, t=timestep, **arg_c)[0]
+                if offload_model:
+                    torch.cuda.empty_cache()
+                noise_pred_uncond = model(
+                    latent_model_input, t=timestep, **arg_null)[0]
+                if offload_model:
+                    torch.cuda.empty_cache()
+                noise_pred = noise_pred_uncond + sample_guide_scale * (
+                    noise_pred_cond - noise_pred_uncond)
+                # noise_pred_cond = model(
+                #     latent_model_input, t=timestep, **arg_c)[0]
                 if sample_guide_scale != 1.0:
                     noise_pred_uncond = model(
                         latent_model_input, t=timestep, **arg_null)[0]

@@ -22,7 +22,7 @@
 
 ### 🔥 News
 * **[2026.10.19]** We release the paper of Wan-Alpha++ on [arXiv](https://arxiv.org/abs/2610.26189).
-* **[2026.10.19]** Released checkpoints for normal RGBA video of Wan-Alpha++ on [GitHub](https://github.com/WeChatCV/Wan-Alpha_PlusPlus).
+* **[2026.10.19]** Released checkpoints for normal RGBA video of Wan-Alpha++ on [GitHub](https://github.com/WeChatCV/Wan-Alpha++).
 
 
 ---
@@ -32,8 +32,8 @@
 - [x] **Paper**: Available on [arXiv](https://arxiv.org/abs/2610.26189).
 - [x] **Inference Code**: Released inference pipeline for normal RGBA video of Wan-Alpha++.
 - [x] **Model Weights of Normal RGBA Video**: Released checkpoints for Wan-Alpha++.
-- [ ] Training Code.
-- [ ] Checkpoints for Effect RGBA Video.
+- [] Training Code.
+- [] Checkpoints for Effect RGBA Video.
 
 
 
@@ -43,8 +43,8 @@
 ##### 1. Environment Setup
 ```bash
 # Clone the project repository
-git clone https://github.com/WeChatCV/Wan-Alpha_PlusPlus.git
-cd Wan-Alpha_PlusPlus
+git clone https://github.com/WeChatCV/Wan-Alpha++.git
+cd Wan-Alpha++
 
 # Create and activate Conda environment
 conda create -n Wan-Alpha++ python=3.11 -y
@@ -65,15 +65,16 @@ Download [Wan-Alpha-v2.0-VAE](https://huggingface.co/htdong/Wan-Alpha-VAE/blob/m
 ### 🧪 Usage
 You can test our model through:
 ```bash
-torchrun --nproc_per_node=8  generate_2.2_new.py \
-        --task i2v-A14B --size 832*480 \
+torchrun --nproc_per_node=8  generate_2.2_new.py --task i2v-A14B --size 832*480 \
         --ckpt_dir Wan-AI/Wan2.2-I2V-A14B \
         --dit_fsdp --t5_fsdp --ulysses_size 8 \
         --frame_num 49 \
+        --image "img_021.png" \
+        --prompt "这个视频的背景是透明的。一个女人手里拿着一个透明杯子，里边装着橙汁，她把杯子拿起来喝了一口，脸上露出笑容。" \
         --vae_lora_checkpoint "VAE/pytorch_model.bin" \
         --high_lora high_noise.safetensors \
         --low_lora low_noise.safetensors \
-        --output_dir $output_path/result
+        --output_dir $output_path/result  2>&1 | tee -a $output_path/result.log
 ```
 You can specify the weights of `Wan2.2-I2V-A14B` with `--ckpt_dir`, `Wan-Alpha-VAE` with `--vae_lora_checkpoint`, and `Wan-Alpha-I2V` with `--high_lora` and `--low_lora`. Finally, you can find the rendered RGBA videos with a checkerboard background and PNG frames at `--output_dir`.
 
@@ -116,4 +117,4 @@ If you find our work helpful for your research, please consider citing our paper
 
 ### 📬 Contact Us
 
-If you have any questions or suggestions, feel free to reach out via [GitHub Issues](https://github.com/WeChatCV/Wan-Alpha_PlusPlus/issues) . We look forward to your feedback!
+If you have any questions or suggestions, feel free to reach out via [GitHub Issues](https://github.com/WeChatCV/Wan-Alpha++/issues) . We look forward to your feedback!

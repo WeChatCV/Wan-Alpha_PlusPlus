@@ -567,7 +567,7 @@ class WanVAE_(nn.Module):
         ## cache
         t = x.shape[2]
         iter_ = 1 + (t - 1) // 4
-        ## 对encode输入的x，按时间拆分为1、4、4、4....
+
         for i in range(iter_):
             self._enc_conv_idx = [0]
             if i == 0:
@@ -772,9 +772,6 @@ class Mapping(torch.nn.Module):
         self.conv_idx = [0]
         self.feat_map = [None] * self.conv_num
 
-        ## cache
-        ## Encoder 已经预设帧数是 4 的倍数了，这里只能做块大小为 1
-        ## 这样也合理，因为理论上，Mapping 中 temporal 信息不必要
         for i in range(x.shape[2]):
             self.conv_idx = [0]
             if i == 0:
@@ -860,7 +857,7 @@ class WanVAEit2v:
             self.rgb_only = False
 
             if has_trans_encoder:
-                self.model_fgr.middle = Mapping(192*4, 16, mid_dim=192*2).to(device=device)
+                self.model_fgr.middle = Mapping(192*4, 16, mid_dim=192*2).to(device=device).requires_grad_(False)
 
                 middle_state_dict = {}
                 for key in state_dict:

@@ -15,7 +15,7 @@ import torch
 import torch.distributed as dist
 from PIL import Image, ImageDraw
 
-sys.path.append("/mnt/shenzhen2cephfs/mm-base-vision/haotiandong/WanAlpha-Tpami/Wan2.2")
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Wan2.2"))
 import wan2
 from wan2.configs import MAX_AREA_CONFIGS, SIZE_CONFIGS, SUPPORTED_SIZES, WAN_CONFIGS
 from wan2.distributed.util import init_distributed_group
@@ -356,7 +356,7 @@ def _init_logging(rank):
 
 
 def _cleanup_memory(tag: str = ""):
-    """清理 Python 和 CUDA 缓存，避免循环生成时显存/内存累积导致卡死。"""
+
     try:
         gc.collect()
     except Exception:
@@ -422,26 +422,22 @@ def render_video(tensor_fgr,
         frame = np.concatenate([frame_fgr[:,:,::-1], frame_pha.astype(np.uint8)], axis=2)
         frames.append(frame)
     
-    frames = frames[1:]
-    frames_fgr = frames_fgr[1:]
-    frames_pha = frames_pha[1:]
+    # frames = frames[1:]
+    # frames_fgr = frames_fgr[1:]
+    # frames_pha = frames_pha[1:]
 
-    # 生成灰白棋盘格图案
+
     def create_checkerboard(size=8, pattern_size=(512, 512)):
-        # 创建棋盘格背景
         img = Image.new('RGB', (pattern_size[0], pattern_size[1]), (255, 255, 255))
         draw = ImageDraw.Draw(img)
 
-        # 填充棋盘格颜色
         for i in range(0, pattern_size[0], size):
             for j in range(0, pattern_size[1], size):
                 if (i + j) // size % 2 == 0:
                     draw.rectangle([i, j, i+size, j+size], fill=(200, 200, 200))
         return img
 
-    # 处理视频帧并替换透明部分为棋盘格
     def blender_background(frame_rgba, checkerboard):
-        # 创建透明区域的掩码
         alpha_channel = frame_rgba[:, :, 3:] / 255. 
         checkerboard = np.array(checkerboard)
         checkerboard = cv2.resize(checkerboard, (frame_rgba.shape[1], frame_rgba.shape[0]))
@@ -597,7 +593,6 @@ def generate(args):
                     dist.barrier()
                 continue
 
-            # 生成前先做一次清理，避免上一轮残留显存导致 OOM 或卡住
             _cleanup_memory(tag=f"before generate: {args.prompt[:32]}")
 
             video = wan_t2v.generate(
@@ -624,7 +619,6 @@ def generate(args):
                 logging.info(f"Saving generated video to {args.save_file}")
 
                 video_fgr = video
-                # 尽量把后处理放到 CPU 上进行，并立刻释放 GPU 上的拷贝
                 try:
                     video_fgr = video_fgr.detach().to("cpu")
                 except Exception:
@@ -634,20 +628,15 @@ def generate(args):
                 os.makedirs(f"{args.output_dir}/{args.prompt[:30]}", exist_ok=True)
                 save_video(f"{args.output_dir}/{args.prompt[:30]}/fgr.mp4", frames_fgr)
 
-                # 释放本轮用到的大张量引用
                 del frames_fgr
                 del video_fgr
 
-            # 本轮生成结果也删掉，避免跨 iteration 引用残留
             del video
             _cleanup_memory(tag=f"after generate: {args.prompt[:32]}")
 
-            # 多卡时保证同步，避免某张卡已完成但其他卡还在收尾，
-            # 下一轮读取/释放时序错乱导致挂起
             if dist.is_initialized():
                 dist.barrier()
 
-        # 循环结束后再清理一次
         _cleanup_memory(tag="all prompts done")
         exit()
     elif "ti2v" in args.task:
@@ -764,15 +753,8 @@ def generate(args):
             convert_model_dtype=args.convert_model_dtype,
         )
         logging.info("Generating video ...")
-        img_list = [
-       "img_021.png",
-        ]
-
-        prompt_list = [
-        "这个视频的背景是透明的。一个女人手里拿着一个透明杯子，里边装着橙汁，她把杯子拿起来喝了一口，脸上露出笑容。"
-
-
-] 
+        img_list = [args.image]
+        prompt_list = [args.prompt]
         for img, prompt in zip(img_list, prompt_list):
             args.prompt = prompt
             logging.info(f"Input prompt: {prompt}")
@@ -784,24 +766,22 @@ def generate(args):
             img = Image.open(img).convert("RGBA")
             print("img size:", img.size)
             r, g, b, a = img.split()
-            # 合并 RGB
+
             rgb_image = Image.merge('RGB', (r, g, b))
 
-            # 将 Alpha 通道转换为 3 通道灰度图
             alpha_3ch = Image.merge('RGB', (a, a, a))
 
-            # 创建一个白色背景图
+
             white_bg = Image.new("RGB", img.size, (255, 255, 255))
 
-            # 将原图粘贴到白色背景上，使用 alpha 通道作为蒙版
-            white_bg.paste(img, mask=img.split()[3])  # 使用 alpha 通道作为 mask
+            white_bg.paste(img, mask=img.split()[3])  
 
             pure_white = Image.new("RGB", img.size, (255, 255, 255))
 
             videos = wan_i2v.generate(
                 args.prompt,
                 white_bg,
-                pure_white,
+                alpha_3ch,
                 white_bg,
                 max_area=MAX_AREA_CONFIGS[args.size],
                 frame_num=args.frame_num,
@@ -825,7 +805,7 @@ def generate(args):
                 logging.info(f"Saving generated video to {args.save_file}")
 
                 video_fgr, video_pha = videos
-                # 尽量把后处理放到 CPU 上进行，并立刻释放 GPU 上的拷贝
+
                 try:
                     video_fgr = video_fgr.detach().to("cpu")
                     video_pha = video_pha.detach().to("cpu")
@@ -838,19 +818,18 @@ def generate(args):
                 save_video(f"{args.output_dir}/{args.prompt[:50]}/pha.mp4", frames_pha)
                 save_video(f"{args.output_dir}/{args.prompt[:50]}/fgr.mp4", frames_fgr)
 
-                # 释放本轮用到的大张量引用
+
                 del frames_fgr
                 del video_fgr
 
-            # 本轮生成结果也删掉，避免跨 iteration 引用残留
+
             _cleanup_memory(tag=f"after generate: {args.prompt[:32]}")
 
-            # 多卡时保证同步，避免某张卡已完成但其他卡还在收尾，
-            # 下一轮读取/释放时序错乱导致挂起
+
             if dist.is_initialized():
                 dist.barrier()
 
-        # 循环结束后再清理一次
+
         _cleanup_memory(tag="all prompts done")
         exit()
 
@@ -890,7 +869,7 @@ if __name__ == "__main__":
     try:
         generate(args)
     finally:
-        # 保险：无论正常退出或异常，都尽量释放显存
+
         try:
             _cleanup_memory(tag="exit")
         except Exception:
